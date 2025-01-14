@@ -1,0 +1,9 @@
+J'essaie de faire un jeu de course en Javascript
+dans lequel la caméra reste fixe sur le personnage,
+cependant, il faut une touche d'accelération pour avancer
+et des touches pour tourner à gauche et à droite. Les sprites
+correspondants au personnages sont situés dans le dossier Asstes/Mario,
+la position neutre du personnage par rapport à la caméra est le fichier
+neutre.png, lorsque l'on appuie sur la touche pour tourner à droite le
+personnage se décale légèrement vers la droite et les images right1.png
+right2.png right3.png right4.png défilent

@@ -1,1 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
 
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mario Kart 9</title>
+    <style>
+        canvas {
+            display: block;
+            margin: auto;
+            background-image: url(Assets/Background/road-travel.gif);
+            background-size: cover;
+            background-repeat: repeat;
+        }
+    </style>
+</head>
+
+<body>
+    <audio id="backgroundMusic" src="Assets/music/Drive.mp3" loop autoplay></audio>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+
+        // Charger la musique de fond
+        const backgroundMusic = document.getElementById("backgroundMusic");
+        backgroundMusic.volume = 0.5; // Volume à 50%
+
+        // Variables pour les sprites
+        const basePath = "Assets/Mario/";
+        const spritePaths = {
+            neutral: `${basePath}neutre.png`,
+            left: [`${basePath}left1.png`, `${basePath}left2.png`, `${basePath}left3.png`, `${basePath}left4.png`],
+            right: [`${basePath}right1.png`, `${basePath}right2.png`, `${basePath}right3.png`, `${basePath}right4.png`],
+        };
+
+        // Objet de sprites
+        const sprites = {
+            neutral: new Image(),
+            left: [],
+            right: [],
+        };
+
+        // Préchargement des sprites
+        function preloadSprites(paths, target) {
+            if (Array.isArray(paths)) {
+                paths.forEach((path, index) => {
+                    target[index] = new Image();
+                    target[index].src = path;
+                });
+            } else {
+                target.src = paths;
+            }
+        }
+
+        // Chargement des sprites
+        preloadSprites(spritePaths.neutral, sprites.neutral);
+        preloadSprites(spritePaths.left, sprites.left);
+        preloadSprites(spritePaths.right, sprites.right);
+
+        // État du personnage
+        let posX = canvas.width / 2; // Position centrale en X
+        let posY = canvas.height - 150; // Position fixe en Y
+        let speed = 0; // Vitesse du personnage
+        let shakingOffset = 0; // Décalage pour l'effet de tremblement
+        let turnState = "neutral"; // "neutral", "left", "right"
+        let frame = 0; // Index du sprite courant pour l'animation
+        let reversing = false; // Indique si on revient vers le neutre
+        let animationTimer = 0; // Timer pour ralentir l'animation des sprites
+        const turnSpeed = 3; // Vitesse de déplacement latéral lors des virages
+        const maxTurnOffset = 200; // Distance maximale de décalage par rapport au centre
+
+        // Écoute des touches
+        const keys = {
+            ArrowUp: false,
+            ArrowLeft: false,
+            ArrowRight: false,
+        };
+
+        document.addEventListener("keydown", (e) => {
+            if (e.key in keys) {
+                keys[e.key] = true;
+                if ((e.key === "ArrowLeft" || e.key === "ArrowRight") && !reversing) {
+                    turnState = e.key === "ArrowLeft" ? "left" : "right";
+                }
+            }
+        });
+
+        document.addEventListener("keyup", (e) => {
+            if (e.key in keys) {
+                keys[e.key] = false;
+                if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+                    reversing = true;
+                }
+            }
+        });
+
+        // Fonction pour changer de sprite
+        function updateSprite() {
+            // Ralentir l'animation pour qu'elle ne change pas à chaque frame
+            animationTimer = (animationTimer + 1) % 5; // Change toutes les 5 frames
+            if (animationTimer !== 0) return;
+
+            if (reversing) {
+                // Retour progressif vers le neutre
+                frame = Math.max(frame - 1, 0);
+                const currentSprites = turnState === "left" ? sprites.left : sprites.right;
+                if (currentSprites[frame]) currentSprite = currentSprites[frame];
+
+                if (frame === 0) {
+                    turnState = "neutral";
+                    reversing = false;
+                    currentSprite = sprites.neutral;
+                }
+            } else if (turnState === "left") {
+                // Défilement vers la gauche
+                frame = Math.min(frame + 1, sprites.left.length - 1);
+                currentSprite = sprites.left[frame];
+            } else if (turnState === "right") {
+                // Défilement vers la droite
+                frame = Math.min(frame + 1, sprites.right.length - 1);
+                currentSprite = sprites.right[frame];
+            } else {
+                // Position neutre
+                currentSprite = sprites.neutral;
+            }
+        }
+
+        // Effet de tremblement
+        function applyShakingEffect() {
+            shakingOffset = Math.sin(Date.now() / 50) * 2; // Plus fluide et réaliste
+        }
+
+        // Mise à jour de la position latérale en fonction des virages
+        function updatePosition() {
+            if (turnState === "left") {
+                posX = Math.max(posX - turnSpeed, canvas.width / 2 - maxTurnOffset);
+            } else if (turnState === "right") {
+                posX = Math.min(posX + turnSpeed, canvas.width / 2 + maxTurnOffset);
+            } else {
+                // Retour vers le centre lorsqu'aucune touche de virage n'est pressée
+                if (posX < canvas.width / 2) {
+                    posX = Math.min(posX + turnSpeed, canvas.width / 2);
+                } else if (posX > canvas.width / 2) {
+                    posX = Math.max(posX - turnSpeed, canvas.width / 2);
+                }
+            }
+        }
+
+        // Boucle de jeu
+        function gameLoop() {
+            // Mettre à jour la vitesse
+            if (keys.ArrowUp) speed = Math.min(speed + 0.1, 5);
+            else speed = Math.max(speed - 0.05, 0);
+
+            updateSprite();
+            applyShakingEffect();
+            updatePosition();
+
+            // Effacer le canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Dessiner le personnage
+            ctx.drawImage(
+                currentSprite,
+                posX - currentSprite.width / 2 + shakingOffset,
+                posY - currentSprite.height / 2
+            );
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Charger le sprite initial et démarrer le jeu
+        let currentSprite = sprites.neutral;
+        sprites.neutral.onload = () => gameLoop();
+
+    </script>
+</body>
+
+</html>
